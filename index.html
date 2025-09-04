@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Dungeon Explorer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600;700&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Exo 2', sans-serif;
+            background: linear-gradient(45deg, #0a1428, #1e3a5f, #2c5aa0, #1a2b4d);
+            background-size: 400% 400%;
+            animation: gradientShift 10s ease infinite;
+            color: #e0f2ff;
+            overflow: hidden;
+            min-height: 100vh;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: radial-gradient(circle, #00bfff, #87ceeb);
+            animation: float 8s infinite ease-in-out;
+            opacity: 0.6;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.6; }
+            50% { transform: translateY(-30px) rotate(180deg); opacity: 1; }
+        }
+
+        .game-container {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            position: relative;
+        }
+
+        .game-world {
+            flex: 1;
+            position: relative;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(0, 100, 200, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 50, 150, 0.15) 0%, transparent 50%),
+                linear-gradient(135deg, #1a2332, #2d4a6b, #1e3548);
+            overflow: hidden;
+            border-right: 3px solid #4a90e2;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.7);
+        }
+
+        .dungeon-grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(74, 144, 226, 0.2) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(74, 144, 226, 0.2) 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: gridPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes gridPulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 0.7; }
+        }
+
+        .player {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: radial-gradient(circle, #00ff88, #00cc66);
+            border: 2px solid #00ffff;
+            border-radius: 50%;
+            transition: all 0.12s ease;
+            z-index: 10;
+            box-shadow: 
+                0 0 25px #00ff88,
+                inset 0 0 15px rgba(255, 255, 255, 0.4);
+            animation: playerGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes playerGlow {
+            0%, 100% { box-shadow: 0 0 25px #00ff88, inset 0 0 15px rgba(255, 255, 255, 0.4); }
+            50% { box-shadow: 0 0 40px #00ff88, inset 0 0 25px rgba(255, 255, 255, 0.6); }
+        }
+
+        .enemy {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #ff4444, #cc0000);
+            border: 2px solid #ff8800;
+            border-radius: 50%;
+            animation: enemyPulse 1.2s ease-in-out infinite;
+            z-index: 5;
+            box-shadow: 0 0 20px #ff4444;
+            transition: all 0.1s ease;
+        }
+
+        @keyframes enemyPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .treasure {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #ffd700, #ffaa00);
+            border: 2px solid #ffff00;
+            border-radius: 20%;
+            animation: treasureSpin 2.5s linear infinite;
+            z-index: 5;
+            box-shadow: 0 0 20px #ffd700;
+        }
+
+        @keyframes treasureSpin {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.2); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+
+        .obstacle {
+            position: absolute;
+            background: linear-gradient(45deg, #2c4a6b, #4a6b8a);
+            border: 2px solid #5a7b9a;
+            border-radius: 8px;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .ui-panel {
+            width: 320px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.85), rgba(30, 58, 95, 0.4));
+            border-left: 3px solid #4a90e2;
+            padding: 20px;
+            backdrop-filter: blur(15px);
+            position: relative;
+            overflow-y: auto;
+            font-family: 'Exo 2', sans-serif;
+        }
+
+        .ui-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(0, 191, 255, 0.08), transparent);
+            animation: shimmer 5s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .title {
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            font-size: 1.6em;
+            text-align: center;
+            color: #00bfff;
+            text-shadow: 
+                2px 2px 4px rgba(0, 0, 0, 0.8),
+                0 0 15px #00bfff;
+            margin-bottom: 20px;
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 15px #00bfff; }
+            50% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8), 0 0 25px #00bfff, 0 0 35px #00bfff; }
+        }
+
+        .stat-container {
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(0, 30, 60, 0.6);
+            border-radius: 12px;
+            border: 1px solid #4a90e2;
+            position: relative;
+            overflow: hidden;
+            font-weight: 400;
+        }
+
+        .stat-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 191, 255, 0.2), transparent);
+            animation: statSweep 6s ease-in-out infinite;
+        }
+
+        @keyframes statSweep {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        .stat-bar {
+            background: linear-gradient(45deg, #1a2332, #2d4a6b);
+            height: 16px;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 6px 0;
+            border: 1px solid #4a90e2;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+            animation: barShine 2.5s ease-in-out infinite;
+        }
+
+        @keyframes barShine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .health-bar { 
+            background: linear-gradient(45deg, #cc0000, #ff4444);
+            box-shadow: 0 0 12px #cc0000;
+        }
+        
+        .exp-bar { 
+            background: linear-gradient(45deg, #00cc88, #00ff88);
+            box-shadow: 0 0 12px #00cc88;
+        }
+
+        .controls {
+            background: rgba(0, 20, 40, 0.8);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #4a90e2;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .controls h3 {
+            color: #00bfff;
+            margin-bottom: 12px;
+            text-shadow: 0 0 8px #00bfff;
+            font-family: 'Orbitron', monospace;
+            font-weight: 700;
+        }
+
+        .key-hint {
+            display: inline-block;
+            background: linear-gradient(45deg, #1a2332, #2d4a6b);
+            color: #e0f2ff;
+            padding: 6px 12px;
+            margin: 3px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            border: 1px solid #4a90e2;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+        }
+
+        .log {
+            background: rgba(0, 20, 40, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            height: 150px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #4a90e2;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .log-entry {
+            margin: 6px 0;
+            padding: 6px;
+            border-radius: 6px;
+            animation: logEntry 0.5s ease-in-out;
+            border-left: 3px solid #4a90e2;
+            background: rgba(30, 58, 95, 0.1);
+            font-size: 0.9em;
+        }
+
+        @keyframes logEntry {
+            0% { opacity: 0; transform: translateX(-20px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+
+        .damage-text {
+            position: absolute;
+            font-size: 18px;
+            font-weight: 700;
+            color: #ff4444;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+            animation: damageFloat 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 20;
+            font-family: 'Orbitron', monospace;
+        }
+
+        @keyframes damageFloat {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1.2); }
+        }
+
+        .explosion {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #ff8800, #ff4444, transparent);
+            border-radius: 50%;
+            animation: explode 0.6s ease-out forwards;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        .collect-effect {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: radial-gradient(circle, #ffd700, transparent);
+            border-radius: 50%;
+            animation: collect 0.8s ease-out forwards;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        @keyframes collect {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+            }
+            
+            .ui-panel {
+                width: 100%;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="particles" id="particles"></div>
+    
+    <div class="game-container">
+        <div class="game-world" id="gameWorld">
+            <div class="dungeon-grid"></div>
+            <div class="player" id="player"></div>
+        </div>
+        
+        <div class="ui-panel">
+            <h1 class="title">⚔️ DUNGEON EXPLORER ⚔️</h1>
+            
+            <div class="stat-container">
+                <div><strong>Hero:</strong> <span id="playerName">Cyber Warrior</span></div>
+                <div><strong>Level:</strong> <span id="level">1</span></div>
+                <div><strong>Score:</strong> <span id="score">0</span></div>
+            </div>
+            
+            <div class="stat-container">
+                <div>❤️ Health: <span id="healthText">100/100</span></div>
+                <div class="stat-bar">
+                    <div class="stat-fill health-bar" id="healthBar" style="width: 100%"></div>
+                </div>
+                
+                <div>⭐ Experience: <span id="expText">0/100</span></div>
+                <div class="stat-bar">
+                    <div class="stat-fill exp-bar" id="expBar" style="width: 0%"></div>
+                </div>
+            </div>
+            
+            <div class="stat-container">
+                <div><strong>⚔️ Attack:</strong> <span id="attack">10</span></div>
+                <div><strong>🛡️ Defense:</strong> <span id="defense">5</span></div>
+                <div><strong>💰 Gold:</strong> <span id="gold">0</span></div>
+            </div>
+            
+            <div class="controls">
+                <h3>🎮 Controls</h3>
+                <div>
+                    <span class="key-hint">↑ W</span>
+                    <span class="key-hint">↓ S</span>
+                    <span class="key-hint">← A</span>
+                    <span class="key-hint">→ D</span>
+                </div>
+                <div style="margin-top: 10px;">
+                    <span class="key-hint">SPACE</span> Attack
+                </div>
+            </div>
+            
+            <div class="log" id="gameLog">
+                <div class="log-entry">🎮 Welcome to the Dungeon Explorer!</div>
+                <div class="log-entry">⚔️ Use arrow keys or WASD to move</div>
+                <div class="log-entry">⚡ Press SPACE to attack enemies</div>
+                <div class="log-entry">💰 Collect treasures to gain gold</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game state
+        let gameState = {
+            player: {
+                x: 50,
+                y: 50,
+                health: 100,
+                maxHealth: 100,
+                experience: 0,
+                level: 1,
+                attack: 10,
+                defense: 5,
+                gold: 0,
+                score: 0
+            },
+            enemies: [],
+            treasures: [],
+            obstacles: [],
+            keys: {},
+            gameRunning: true,
+            lastUpdate: 0,
+            spawnTimers: {
+                enemy: 0,
+                treasure: 0
+            }
+        };
+
+        // Game elements
+        const gameWorld = document.getElementById('gameWorld');
+        const player = document.getElementById('player');
+        const gameLog = document.getElementById('gameLog');
+
+        // Initialize particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 60; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 8 + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Create obstacles
+        function createObstacles() {
+            const worldRect = gameWorld.getBoundingClientRect();
+            for (let i = 0; i < 12; i++) {
+                const obstacle = document.createElement('div');
+                obstacle.className = 'obstacle';
+                obstacle.style.width = Math.random() * 50 + 40 + 'px';
+                obstacle.style.height = Math.random() * 50 + 40 + 'px';
+                obstacle.style.left = Math.random() * (worldRect.width - 100) + 'px';
+                obstacle.style.top = Math.random() * (worldRect.height - 100) + 'px';
+                gameWorld.appendChild(obstacle);
+                
+                gameState.obstacles.push({
+                    element: obstacle,
+                    x: parseInt(obstacle.style.left),
+                    y: parseInt(obstacle.style.top),
+                    width: parseInt(obstacle.style.width),
+                    height: parseInt(obstacle.style.height)
+                });
+            }
+        }
+
+        // Enhanced enemy spawning with strategic positioning
+        function spawnEnemy() {
+            if (gameState.enemies.length >= 6) return;
+            
+            const worldRect = gameWorld.getBoundingClientRect();
+            const enemy = document.createElement('div');
+            enemy.className = 'enemy';
+            
+            let x, y;
+            let attempts = 0;
+            
+            // Try to spawn enemies in different quadrants for better distribution
+            do {
+                const quadrant = Math.floor(Math.random() * 4);
+                const buffer = 120;
+                
+                switch(quadrant) {
+                    case 0: // Top-left
+                        x = Math.random() * (worldRect.width / 2 - buffer);
+                        y = Math.random() * (worldRect.height / 2 - buffer);
+                        break;
+                    case 1: // Top-right
+                        x = Math.random() * (worldRect.width / 2 - buffer) + worldRect.width / 2;
+                        y = Math.random() * (worldRect.height / 2 - buffer);
+                        break;
+                    case 2: // Bottom-left
+                        x = Math.random() * (worldRect.width / 2 - buffer);
+                        y = Math.random() * (worldRect.height / 2 - buffer) + worldRect.height / 2;
+                        break;
+                    case 3: // Bottom-right
+                        x = Math.random() * (worldRect.width / 2 - buffer) + worldRect.width / 2;
+                        y = Math.random() * (worldRect.height / 2 - buffer) + worldRect.height / 2;
+                        break;
+                }
+                attempts++;
+            } while (Math.abs(x - gameState.player.x) < 100 && Math.abs(y - gameState.player.y) < 100 && attempts < 10);
+            
+            enemy.style.left = x + 'px';
+            enemy.style.top = y + 'px';
+            gameWorld.appendChild(enemy);
+            
+            // Enhanced enemy stats with different types
+            const enemyTypes = ['normal', 'fast', 'strong'];
+            const enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+            
+            let enemyStats = {
+                element: enemy,
+                x: x,
+                y: y,
+                health: 25 + gameState.player.level * 8,
+                maxHealth: 25 + gameState.player.level * 8,
+                attack: 4 + gameState.player.level * 2,
+                speed: 0.8 + gameState.player.level * 0.05,
+                lastAttack: 0,
+                type: enemyType,
+                direction: Math.random() * Math.PI * 2,
+                stuckTimer: 0,
+                lastPosition: {x: x, y: y}
+            };
+            
+            // Modify stats based on enemy type
+            switch(enemyType) {
+                case 'fast':
+                    enemyStats.speed *= 1.5;
+                    enemyStats.health *= 0.7;
+                    enemy.style.borderColor = '#00ff88';
+                    break;
+                case 'strong':
+                    enemyStats.attack *= 1.5;
+                    enemyStats.health *= 1.3;
+                    enemyStats.speed *= 0.8;
+                    enemy.style.borderColor = '#ff4444';
+                    enemy.style.transform = 'scale(1.1)';
+                    break;
+                default:
+                    enemy.style.borderColor = '#ff8800';
+            }
+            
+            gameState.enemies.push(enemyStats);
+        }
+
+        // Spawn treasure
+        function spawnTreasure() {
+            if (gameState.treasures.length >= 4) return;
+            
+            const worldRect = gameWorld.getBoundingClientRect();
+            const treasure = document.createElement('div');
+            treasure.className = 'treasure';
+            
+            const x = Math.random() * (worldRect.width - 100) + 50;
+            const y = Math.random() * (worldRect.height - 100) + 50;
+            
+            treasure.style.left = x + 'px';
+            treasure.style.top = y + 'px';
+            gameWorld.appendChild(treasure);
+            
+            gameState.treasures.push({
+                element: treasure,
+                x: x,
+                y: y,
+                value: 15 + Math.floor(Math.random() * 25)
+            });
+        }
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            gameState.keys[e.key.toLowerCase()] = true;
+            gameState.keys[e.code] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            gameState.keys[e.key.toLowerCase()] = false;
+            gameState.keys[e.code] = false;
+        });
+
+        // Enhanced movement with smoother controls
+        function movePlayer() {
+            const speed = 3.5;
+            let newX = gameState.player.x;
+            let newY = gameState.player.y;
+
+            if (gameState.keys['w'] || gameState.keys['ArrowUp']) newY -= speed;
+            if (gameState.keys['s'] || gameState.keys['ArrowDown']) newY += speed;
+            if (gameState.keys['a'] || gameState.keys['ArrowLeft']) newX -= speed;
+            if (gameState.keys['d'] || gameState.keys['ArrowRight']) newX += speed;
+
+            // Boundary checks
+            const worldRect = gameWorld.getBoundingClientRect();
+            newX = Math.max(15, Math.min(worldRect.width - 45, newX));
+            newY = Math.max(15, Math.min(worldRect.height - 45, newY));
+
+            // Enhanced collision detection with obstacles
+            let canMove = true;
+            gameState.obstacles.forEach(obstacle => {
+                if (newX < obstacle.x + obstacle.width &&
+                    newX + 30 > obstacle.x &&
+                    newY < obstacle.y + obstacle.height &&
+                    newY + 30 > obstacle.y) {
+                    canMove = false;
+                }
+            });
+
+            if (canMove) {
+                gameState.player.x = newX;
+                gameState.player.y = newY;
+                player.style.left = newX + 'px';
+                player.style.top = newY + 'px';
+            }
+        }
+
+        // Enhanced attack system
+        function attack() {
+            if (gameState.keys[' '] || gameState.keys['Space']) {
+                let enemiesHit = 0;
+                gameState.enemies.forEach((enemy, index) => {
+                    const distance = Math.sqrt(
+                        Math.pow(gameState.player.x - enemy.x, 2) + 
+                        Math.pow(gameState.player.y - enemy.y, 2)
+                    );
+                    
+                    if (distance < 65) {
+                        enemiesHit++;
+                        const damage = gameState.player.attack + Math.floor(Math.random() * 8);
+                        enemy.health -= damage;
+                        
+                        // Create enhanced damage effect
+                        createDamageText(enemy.x, enemy.y, damage);
+                        
+                        if (enemy.health <= 0) {
+                            // Create explosion effect
+                            createExplosion(enemy.x, enemy.y);
+                            
+                            // Remove enemy
+                            gameWorld.removeChild(enemy.element);
+                            gameState.enemies.splice(index, 1);
+                            
+                            // Enhanced rewards based on enemy type
+                            let expGain = 25 + gameState.player.level * 6;
+                            let goldGain = 8 + Math.floor(Math.random() * 12);
+                            
+                            if (enemy.type === 'fast') {
+                                expGain *= 1.2;
+                                goldGain *= 1.1;
+                            } else if (enemy.type === 'strong') {
+                                expGain *= 1.5;
+                                goldGain *= 1.3;
+                            }
+                            
+                            gameState.player.experience += Math.floor(expGain);
+                            gameState.player.gold += Math.floor(goldGain);
+                            gameState.player.score += 150;
+                            
+                            addLog(`⚔️ Defeated ${enemy.type} enemy! +${Math.floor(expGain)} XP, +${Math.floor(goldGain)} gold`);
+                            
+                            checkLevelUp();
+                        }
+                    }
+                });
+                
+                if (enemiesHit === 0) {
+                    addLog('⚔️ Attack missed!');
+                }
+                
+                // Reset space key to prevent continuous attacks
+                gameState.keys[' '] = false;
+                gameState.keys['Space'] = false;
+            }
+        }
+
+        // Enhanced enemy AI with better pathfinding and combat
+        function updateEnemies(currentTime) {
+            gameState.enemies.forEach(enemy => {
+                const dx = gameState.player.x - enemy.x;
+                const dy = gameState.player.y - enemy.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Check if enemy is stuck
+                const positionDiff = Math.sqrt(
+                    Math.pow(enemy.x - enemy.lastPosition.x, 2) + 
+                    Math.pow(enemy.y - enemy.lastPosition.y, 2)
+                );
+                
+                if (positionDiff < 1) {
+                    enemy.stuckTimer++;
+                    if (enemy.stuckTimer > 60) { // 1 second at 60fps
+                        // Add random movement to unstuck
+                        enemy.direction = Math.random() * Math.PI * 2;
+                        enemy.stuckTimer = 0;
+                    }
+                } else {
+                    enemy.stuckTimer = 0;
+                }
+                
+                enemy.lastPosition = {x: enemy.x, y: enemy.y};
+                
+                // Enhanced movement with obstacle avoidance
+                if (distance > 0) {
+                    let moveX = (dx / distance) * enemy.speed;
+                    let moveY = (dy / distance) * enemy.speed;
+                    
+                    // Add some randomness to prevent clustering
+                    if (Math.random() < 0.1) {
+                        moveX += (Math.random() - 0.5) * 2;
+                        moveY += (Math.random() - 0.5) * 2;
+                    }
+                    
+                    // Simple obstacle avoidance
+                    let canMoveX = true;
+                    let canMoveY = true;
+                    
+                    gameState.obstacles.forEach(obstacle => {
+                        const futureX = enemy.x + moveX;
+                        const futureY = enemy.y + moveY;
+                        
+                        if (futureX < obstacle.x + obstacle.width &&
+                            futureX + 25 > obstacle.x &&
+                            enemy.y < obstacle.y + obstacle.height &&
+                            enemy.y + 25 > obstacle.y) {
+                            if (Math.abs(futureX - obstacle.x) < Math.abs(futureX - (obstacle.x + obstacle.width))) {
+                                canMoveX = false;
+                            }
+                            if (Math.abs(futureY - obstacle.y) < Math.abs(futureY - (obstacle.y + obstacle.height))) {
+                                canMoveY = false;
+                            }
+                        }
+                    });
+                    
+                    if (canMoveX) enemy.x += moveX;
+                    if (canMoveY) enemy.y += moveY;
+                    
+                    // If stuck, use random direction
+                    if (enemy.stuckTimer > 30) {
+                        enemy.x += Math.cos(enemy.direction) * enemy.speed;
+                        enemy.y += Math.sin(enemy.direction) * enemy.speed;
+                    }
+                    
+                    enemy.element.style.left = enemy.x + 'px';
+                    enemy.element.style.top = enemy.y + 'px';
+                }
+                
+                // Enhanced combat system
+                if (distance < 35 && currentTime - enemy.lastAttack > 1000) {
+                    const damage = Math.max(1, enemy.attack - gameState.player.defense);
+                    gameState.player.health -= damage;
+                    enemy.lastAttack = currentTime;
+                    
+                    createDamageText(gameState.player.x, gameState.player.y, damage, '#ff4444');
+                    addLog(`💥 Enemy hit you for ${damage} damage!`);
+                    
+                    if (gameState.player.health <= 0) {
+                        gameOver();
+                    }
+                }
+            });
+        }
+
+        // Check treasure collection
+        function checkTreasureCollection() {
+            gameState.treasures.forEach((treasure, index) => {
+                const distance = Math.sqrt(
+                    Math.pow(gameState.player.x - treasure.x, 2) + 
+                    Math.pow(gameState.player.y - treasure.y, 2)
+                );
+                
+                if (distance < 35) {
+                    createCollectEffect(treasure.x, treasure.y);
+                    gameState.player.gold += treasure.value;
+                    gameState.player.score += treasure.value * 2;
+                    addLog(`💰 Collected ${treasure.value} gold!`);
+                    
+                    gameWorld.removeChild(treasure.element);
+                    gameState.treasures.splice(index, 1);
+                }
+            });
+        }
+
+        // Enhanced level up system
+        function checkLevelUp() {
+            const expNeeded = gameState.player.level * 100;
+            if (gameState.player.experience >= expNeeded) {
+                gameState.player.level++;
+                gameState.player.experience -= expNeeded;
+                
+                // Enhanced stat growth
+                const healthIncrease = 25 + Math.floor(Math.random() * 15);
+                const attackIncrease = 5 + Math.floor(Math.random() * 5);
+                const defenseIncrease = 3 + Math.floor(Math.random() * 3);
+                
+                gameState.player.maxHealth += healthIncrease;
+                gameState.player.health = gameState.player.maxHealth;
+                gameState.player.attack += attackIncrease;
+                gameState.player.defense += defenseIncrease;
+                
+                addLog(`🆙 Level up! Level ${gameState.player.level}`);
+                addLog(`💪 +${healthIncrease} HP, +${attackIncrease} ATK, +${defenseIncrease} DEF`);
+                
+                // Create level up effect
+                createLevelUpEffect();
+            }
+        }
+
+        // Create visual effects
+        function createDamageText(x, y, damage, color = '#ff4444') {
+            const damageText = document.createElement('div');
+            damageText.className = 'damage-text';
+            damageText.textContent = `-${damage}`;
+            damageText.style.left = x + 'px';
+            damageText.style.top = y + 'px';
+            damageText.style.color = color;
+            gameWorld.appendChild(damageText);
+            
+            setTimeout(() => {
+                if (damageText.parentNode) {
+                    gameWorld.removeChild(damageText);
+                }
+            }, 1000);
+        }
+
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.style.left = (x - 25) + 'px';
+            explosion.style.top = (y - 25) + 'px';
+            gameWorld.appendChild(explosion);
+            
+            setTimeout(() => {
+                if (explosion.parentNode) {
+                    gameWorld.removeChild(explosion);
+                }
+            }, 600);
+        }
+
+        function createCollectEffect(x, y) {
+            const collectEffect = document.createElement('div');
+            collectEffect.className = 'collect-effect';
+            collectEffect.style.left = (x - 17) + 'px';
+            collectEffect.style.top = (y - 17) + 'px';
+            gameWorld.appendChild(collectEffect);
+            
+            setTimeout(() => {
+                if (collectEffect.parentNode) {
+                    gameWorld.removeChild(collectEffect);
+                }
+            }, 800);
+        }
+
+        function createLevelUpEffect() {
+            const levelUpEffect = document.createElement('div');
+            levelUpEffect.style.position = 'absolute';
+            levelUpEffect.style.left = (gameState.player.x - 25) + 'px';
+            levelUpEffect.style.top = (gameState.player.y - 25) + 'px';
+            levelUpEffect.style.width = '80px';
+            levelUpEffect.style.height = '80px';
+            levelUpEffect.style.background = 'radial-gradient(circle, #ffd700, #ffaa00, transparent)';
+            levelUpEffect.style.borderRadius = '50%';
+            levelUpEffect.style.animation = 'collect 1.5s ease-out forwards';
+            levelUpEffect.style.pointerEvents = 'none';
+            levelUpEffect.style.zIndex = '25';
+            gameWorld.appendChild(levelUpEffect);
+            
+            setTimeout(() => {
+                if (levelUpEffect.parentNode) {
+                    gameWorld.removeChild(levelUpEffect);
+                }
+            }, 1500);
+        }
+
+        // Enhanced game over
+        function gameOver() {
+            gameState.gameRunning = false;
+            addLog('💀 Game Over!');
+            addLog(`🏆 Final Score: ${gameState.player.score}`);
+            addLog(`⭐ Final Level: ${gameState.player.level}`);
+            
+            // Create game over overlay
+            const gameOverOverlay = document.createElement('div');
+            gameOverOverlay.style.position = 'fixed';
+            gameOverOverlay.style.top = '0';
+            gameOverOverlay.style.left = '0';
+            gameOverOverlay.style.width = '100%';
+            gameOverOverlay.style.height = '100%';
+            gameOverOverlay.style.background = 'rgba(0, 0, 0, 0.8)';
+            gameOverOverlay.style.display = 'flex';
+            gameOverOverlay.style.alignItems = 'center';
+            gameOverOverlay.style.justifyContent = 'center';
+            gameOverOverlay.style.zIndex = '1000';
+            gameOverOverlay.innerHTML = `
+                <div style="text-align: center; color: #fff; font-family: 'Orbitron', monospace;">
+                    <h1 style="font-size: 3em; color: #ff4444; margin-bottom: 20px;">GAME OVER</h1>
+                    <p style="font-size: 1.5em; margin-bottom: 10px;">Final Score: ${gameState.player.score}</p>
+                    <p style="font-size: 1.2em; margin-bottom: 30px;">Level Reached: ${gameState.player.level}</p>
+                    <button onclick="location.reload()" style="
+                        background: linear-gradient(45deg, #00bfff, #0080ff);
+                        color: white;
+                        border: none;
+                        padding: 15px 30px;
+                        font-size: 1.2em;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-family: 'Orbitron', monospace;
+                        font-weight: bold;
+                    ">Play Again</button>
+                </div>
+            `;
+            document.body.appendChild(gameOverOverlay);
+        }
+
+        // Enhanced UI updates
+        function updateUI() {
+            document.getElementById('level').textContent = gameState.player.level;
+            document.getElementById('score').textContent = gameState.player.score;
+            document.getElementById('healthText').textContent = 
+                `${gameState.player.health}/${gameState.player.maxHealth}`;
+            document.getElementById('attack').textContent = gameState.player.attack;
+            document.getElementById('defense').textContent = gameState.player.defense;
+            document.getElementById('gold').textContent = gameState.player.gold;
+            
+            const expNeeded = gameState.player.level * 100;
+            document.getElementById('expText').textContent = 
+                `${gameState.player.experience}/${expNeeded}`;
+                
+            // Update health bar
+            const healthPercent = (gameState.player.health / gameState.player.maxHealth) * 100;
+            document.getElementById('healthBar').style.width = healthPercent + '%';
+            
+            // Update exp bar
+            const expPercent = (gameState.player.experience / expNeeded) * 100;
+            document.getElementById('expBar').style.width = expPercent + '%';
+        }
+
+        // Enhanced logging system
+        function addLog(message) {
+            const log = document.getElementById('gameLog');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = message;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            
+            // Keep only last 10 messages
+            while (log.children.length > 10) {
+                log.removeChild(log.firstChild);
+            }
+        }
+
+        // Enhanced main game loop
+        function gameLoop(currentTime) {
+            if (!gameState.gameRunning) return;
+            
+            const deltaTime = currentTime - gameState.lastUpdate;
+            gameState.lastUpdate = currentTime;
+            
+            // Player movement
+            movePlayer();
+            
+            // Player attack
+            attack();
+            
+            // Update enemies
+            updateEnemies(currentTime);
+            
+            // Check treasure collection
+            checkTreasureCollection();
+            
+            // Spawning with dynamic difficulty
+            gameState.spawnTimers.enemy += deltaTime;
+            gameState.spawnTimers.treasure += deltaTime;
+            
+            // Dynamic enemy spawn rate based on level
+            const enemySpawnRate = Math.max(2000 - (gameState.player.level * 100), 1000);
+            if (gameState.spawnTimers.enemy > enemySpawnRate) {
+                spawnEnemy();
+                gameState.spawnTimers.enemy = 0;
+            }
+            
+            // Treasure spawn rate
+            if (gameState.spawnTimers.treasure > 5000) {
+                spawnTreasure();
+                gameState.spawnTimers.treasure = 0;
+            }
+            
+            // Update UI
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize game
+        function initGame() {
+            createParticles();
+            createObstacles();
+            
+            // Initial spawns
+            spawnEnemy();
+            spawnEnemy();
+            spawnTreasure();
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html> 
